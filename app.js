@@ -698,7 +698,7 @@ function startGitScan() {
 
     const lines = [
         { text: 'Launching Git Token Auditor CLI...', type: 'sys', delay: 150 },
-        { text: 'Scanning local repository context: c:\\Users\\z00545fp\\Documents\\mytokencost-vibe', type: 'sys', delay: 250 },
+        { text: 'Scanning local repository context: ~/projects/mytokencost-vibe', type: 'sys', delay: 250 },
         { text: 'Checking .gitignore guidelines... Found!', type: 'success', delay: 200 },
         { text: 'Indexing file packages to estimate token index volumes...', type: 'sys', delay: 200 },
         { text: '[WARNING] Found unignored folder: node_modules/', type: 'warn', delay: 400 },
