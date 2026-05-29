@@ -1,4 +1,4 @@
-// app.js - Full Interactive Logic for vibe.mytokencost.com (Release-Ready)
+// app.js - Full Interactive Logic for vibe.mytokencost.com (Release-Ready with Social Sharing Intents)
 
 // Unified State Management (Persistent across workspace switches)
 const state = {
@@ -30,8 +30,12 @@ const state = {
 
 // Initializers & Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Setup Navigation Tabs & Workspaces
-    setWorkspace('code');
+    // Parse any shared URL configurations on startup
+    parseUrlParameters();
+
+    // Setup active Workspace and Tab routing
+    setWorkspace(state.activeWorkspace);
+    switchTab(state.activeTab);
     
     // Run initial data bindings
     updateCalculator();
@@ -48,7 +52,174 @@ document.addEventListener('DOMContentLoaded', () => {
     compactPrompt(); 
 });
 
-// Workspace Router (Preserves Slider Inputs)
+// ================= DYNAMIC ROUTING & SOCIAL SHARING ENGINE =================
+
+// Parses URL pathnames and query terms on load to recreate exact user diagnostic state
+function parseUrlParameters() {
+    const path = window.location.pathname.toLowerCase().replace('/', '');
+    const searchParams = new URLSearchParams(window.location.search);
+
+    const codeTabs = ['calculator', 'compactor', 'localfirst', 'cheatsheet', 'auditor'];
+    const mediaTabs = ['vision', 'svgopt', 'multimodal'];
+
+    if (codeTabs.includes(path)) {
+        state.activeWorkspace = 'code';
+        state.activeTab = path;
+    } else if (mediaTabs.includes(path)) {
+        state.activeWorkspace = 'media';
+        state.activeTab = path;
+    }
+
+    if (searchParams.has('model')) state.selectedModel = searchParams.get('model');
+    if (searchParams.has('files')) state.filesCount = parseInt(searchParams.get('files'));
+    if (searchParams.has('prompts')) state.promptsPerHour = parseInt(searchParams.get('prompts'));
+    if (searchParams.has('lookup')) state.agentLookup = searchParams.get('lookup') === 'true';
+    if (searchParams.has('terminal')) state.agentTerminal = searchParams.get('terminal') === 'true';
+
+    if (searchParams.has('w')) state.imageWidth = parseInt(searchParams.get('w'));
+    if (searchParams.has('h')) state.imageHeight = parseInt(searchParams.get('h'));
+    if (searchParams.has('vmodel')) state.visionModel = searchParams.get('vmodel');
+    if (searchParams.has('vdetail')) state.visionDetail = searchParams.get('vdetail');
+    if (searchParams.has('audio')) state.audioDuration = parseInt(searchParams.get('audio'));
+    if (searchParams.has('video')) state.videoDuration = parseInt(searchParams.get('video'));
+    if (searchParams.has('fps')) state.videoFps = parseInt(searchParams.get('fps'));
+    if (searchParams.has('vidmodel')) state.videoModel = searchParams.get('vidmodel');
+
+    syncStateToDom();
+}
+
+function syncStateToDom() {
+    if (state.selectedModel === 'sonnet') state.modelLimit = 200000;
+    if (state.selectedModel === 'gpt4o') state.modelLimit = 120000;
+    if (state.selectedModel === 'cheapor') state.modelLimit = 1000000;
+
+    const lookupCheck = document.getElementById('agent-multi-file');
+    const terminalCheck = document.getElementById('agent-terminal');
+    if (lookupCheck) lookupCheck.checked = state.agentLookup;
+    if (terminalCheck) terminalCheck.checked = state.agentTerminal;
+
+    const filesSlider = document.getElementById('files-slider');
+    const promptsSlider = document.getElementById('prompts-slider');
+    if (filesSlider) filesSlider.value = state.filesCount;
+    if (promptsSlider) promptsSlider.value = state.promptsPerHour;
+
+    const wSlider = document.getElementById('vision-width-slider');
+    const hSlider = document.getElementById('vision-height-slider');
+    if (wSlider) wSlider.value = state.imageWidth;
+    if (hSlider) hSlider.value = state.imageHeight;
+
+    const audioSlider = document.getElementById('multimodal-audio-slider');
+    const videoSlider = document.getElementById('multimodal-video-slider');
+    const fpsSlider = document.getElementById('multimodal-fps-slider');
+    if (audioSlider) audioSlider.value = state.audioDuration;
+    if (videoSlider) videoSlider.value = state.videoDuration;
+    if (fpsSlider) fpsSlider.value = state.videoFps;
+
+    const vModelSelect = document.getElementById('vision-model');
+    const vDetailSelect = document.getElementById('vision-detail');
+    if (vModelSelect) vModelSelect.value = state.visionModel;
+    if (vDetailSelect) vDetailSelect.value = state.visionDetail;
+}
+
+function syncStateToUrl() {
+    const url = new URL(window.location.origin);
+    url.pathname = '/' + state.activeTab;
+
+    if (state.activeWorkspace === 'code') {
+        url.searchParams.set('model', state.selectedModel);
+        url.searchParams.set('files', state.filesCount);
+        url.searchParams.set('prompts', state.promptsPerHour);
+        url.searchParams.set('lookup', state.agentLookup);
+        url.searchParams.set('terminal', state.agentTerminal);
+    } else {
+        if (state.activeTab === 'vision') {
+            url.searchParams.set('w', state.imageWidth);
+            url.searchParams.set('h', state.imageHeight);
+            url.searchParams.set('vmodel', state.visionModel);
+            url.searchParams.set('vdetail', state.visionDetail);
+        } else if (state.activeTab === 'multimodal') {
+            url.searchParams.set('audio', state.audioDuration);
+            url.searchParams.set('video', state.videoDuration);
+            url.searchParams.set('fps', state.videoFps);
+            url.searchParams.set('vidmodel', state.videoModel);
+        }
+    }
+    window.history.replaceState({}, '', url.toString());
+}
+
+function getShareUrl() {
+    const url = new URL(window.location.origin);
+    url.pathname = '/' + state.activeTab;
+
+    if (state.activeWorkspace === 'code') {
+        url.searchParams.set('model', state.selectedModel);
+        url.searchParams.set('files', state.filesCount);
+        url.searchParams.set('prompts', state.promptsPerHour);
+        url.searchParams.set('lookup', state.agentLookup);
+        url.searchParams.set('terminal', state.agentTerminal);
+    } else {
+        if (state.activeTab === 'vision') {
+            url.searchParams.set('w', state.imageWidth);
+            url.searchParams.set('h', state.imageHeight);
+            url.searchParams.set('vmodel', state.visionModel);
+            url.searchParams.set('vdetail', state.visionDetail);
+        } else if (state.activeTab === 'multimodal') {
+            url.searchParams.set('audio', state.audioDuration);
+            url.searchParams.set('video', state.videoDuration);
+            url.searchParams.set('fps', state.videoFps);
+            url.searchParams.set('vidmodel', state.videoModel);
+        }
+    }
+    return url.toString();
+}
+
+function copyShareUrl() {
+    const url = getShareUrl();
+    navigator.clipboard.writeText(url).then(() => {
+        showToast("Dynamic sharing URL copied to clipboard!");
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+// 2.7 Pre-populated native social media redirects for maximum attraction conversions
+function shareToSocial(platform) {
+    const url = getShareUrl();
+    let text = "";
+
+    // Generate high-converting text hooks based on the active tab
+    if (state.activeTab === 'calculator') {
+        text = `My agentic compile retries are costing me pricing overflows on Claude Sonnet! Checked my compounding token burn rate here:`;
+    } else if (state.activeTab === 'compactor') {
+        text = `Minified raw instructions context to cut LLM token bills by 45% and graded my Prompt Caching alignment index! Optimize code here:`;
+    } else if (state.activeTab === 'localfirst') {
+        text = `Cloud rate limit lockouts are real. I just mapped my host VRAM to compile a local Ollama fallback config. Build yours here:`;
+    } else if (state.activeTab === 'cheatsheet') {
+        text = `Just built custom workspace .cursorrules directives to stop runaway background agent costs. Generate your rule profiles:`;
+    } else if (state.activeTab === 'vision') {
+        text = `Measured high-detail image slice tiles for Claude and GPT vision models to avoid multimodal pricing tax! Count visual tiles here:`;
+    } else if (state.activeTab === 'multimodal') {
+        text = `Planned Gemini multi-modal audio/video tokens and Sora scene storyboard failures to curb budget leaks. Trace multimodal streams:`;
+    } else {
+        text = `Optimize LLM context indices, prompt caches, and visual asset allocations recursively. Trace token leaks here:`;
+    }
+
+    let shareUrl = "";
+    if (platform === 'x') {
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=VibeCoding,LLM`;
+    } else if (platform === 'linkedin') {
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+    } else if (platform === 'reddit') {
+        shareUrl = `https://www.reddit.com/submit?title=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    }
+
+    if (shareUrl) {
+        window.open(shareUrl, '_blank', 'noopener,noreferrer');
+        showToast(`Opening share draft on ${platform === 'x' ? 'X / Twitter' : platform === 'linkedin' ? 'LinkedIn' : 'Reddit'}!`);
+    }
+}
+
+// Workspace Switcher
 function setWorkspace(workspace) {
     state.activeWorkspace = workspace;
     
@@ -62,7 +233,6 @@ function setWorkspace(workspace) {
     const mediaSection = document.getElementById('workspace-media-section');
 
     if (workspace === 'code') {
-        // Apply Premium Indigo Theme Styles
         codeBtn.className = "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-indigo-600 text-white shadow-sm shadow-indigo-900/50";
         mediaBtn.className = "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 text-slate-400 hover:text-slate-100";
         
@@ -84,7 +254,6 @@ function setWorkspace(workspace) {
         ]);
         switchTab(state.activeTab === 'vision' || state.activeTab === 'svgopt' || state.activeTab === 'multimodal' ? 'calculator' : state.activeTab);
     } else {
-        // Apply Premium Pink/Rose Theme Styles
         codeBtn.className = "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 text-slate-400 hover:text-slate-100";
         mediaBtn.className = "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-pink-600 text-white shadow-sm shadow-pink-900/50";
         
@@ -147,6 +316,9 @@ function switchTab(tabId) {
             btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent";
         }
     });
+
+    // Update URL pathname on tab routing changes
+    syncStateToUrl();
 
     // Handle conditional bindings on tab switch
     if (tabId === 'vision') {
@@ -215,8 +387,6 @@ function updateCalculator() {
     if (state.agentTerminal) effectiveQueries = Math.round(effectiveQueries * 1.35);
 
     // Dynamic Compounding progression loop:
-    // Payload(i) = CodebaseSize * Multiplier + SystemRules + (InitialQuery + i * HistoryGrowth)
-    // Summing over i from 1 to effectiveQueries
     let totalTokensPerHour = 0;
     let singlePayloadSize = 0;
 
@@ -229,9 +399,6 @@ function updateCalculator() {
     }
 
     // 2026 Inference cost matrices per 1M tokens
-    // Premium Claude 3.5 Sonnet: ~$3.00 input, ~$15.00 output (Avg: $4.50 mixed)
-    // GPT-4o: ~$2.50 input, ~$10.00 output (Avg: $3.75 mixed)
-    // Cheap: ~$0.15 input, ~$0.60 output (Avg: $0.22 mixed)
     let pricePerMillion = 3.75;
     if (state.selectedModel === 'sonnet') pricePerMillion = 4.50;
     if (state.selectedModel === 'cheapor') pricePerMillion = 0.22;
@@ -276,7 +443,7 @@ function updateCalculator() {
         statusHeader.innerText = "Context Bleeding warning";
         statusHeader.className = "text-xl font-extrabold text-amber-400 tracking-tight";
         statusGlow.className = "absolute -top-12 -right-12 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl transition-colors duration-500";
-        statusIconBox.className = "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        statusIconBox.className = "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-400 border border-emerald-500/20";
         statusIconBox.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -298,6 +465,19 @@ function updateCalculator() {
         lockoutText.innerText = `${timeToLockoutMins.toFixed(1)} Mins`;
         lockoutText.className = "block text-lg font-bold text-rose-400 tracking-tight code-font animate-pulse";
     }
+
+    // Sync query states to URL live
+    syncStateToUrl();
+}
+
+// Utility to format token numbers
+function formatTokenCount(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(2) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(0) + 'K';
+    }
+    return num;
 }
 
 // ================= PROMPT COMPACTOR CORE =================
@@ -339,7 +519,6 @@ function compactPrompt() {
     }
 
     // 2.2 Cache Alignment Score Grader
-    // Checks if static structures are positioned at the top and actions are at the bottom
     const lowInput = input.toLowerCase();
     const taskIndex = Math.max(lowInput.lastIndexOf('task:'), lowInput.lastIndexOf('todo:'), lowInput.lastIndexOf('refactor:'), lowInput.lastIndexOf('query:'));
     
@@ -348,13 +527,12 @@ function compactPrompt() {
     const scoreText = document.getElementById('cache-score');
 
     if (taskIndex === -1) {
-        cacheScore = 50; // Ambiguous layout
+        cacheScore = 50; 
     } else {
         const relativePosition = taskIndex / input.length;
         cacheScore = Math.round(relativePosition * 100);
     }
 
-    // Clamping score limits
     cacheScore = Math.max(10, Math.min(100, cacheScore));
 
     if (cacheScore >= 80) {
@@ -547,7 +725,6 @@ function startGitScan() {
 
     function printNextLine() {
         if (lineIndex >= lines.length) {
-            // Trigger the flashing Circuit Breaker Shield intercept!
             triggerCircuitBreaker();
             return;
         }
@@ -712,7 +889,6 @@ function updateVisionCalculations() {
     } else {
         if (state.visionModel === 'gpt4o') {
             // GPT-4o tile calculation:
-            // Shortest side must scale to 768px, longest fitted within 2048px square
             let tempW = state.imageWidth;
             let tempH = state.imageHeight;
 
@@ -751,6 +927,9 @@ function updateVisionCalculations() {
     document.getElementById('vision-explanation').innerText = explanation;
 
     drawVisionGrid(cols, rows);
+
+    // Sync vision slider query states to URL live
+    syncStateToUrl();
 }
 
 function drawVisionGrid(cols, rows) {
@@ -921,6 +1100,9 @@ function updateMultimodalCalculations() {
     document.getElementById('storyboard-sec').innerText = `${state.videoDuration}s`;
     document.getElementById('storyboard-multiplier').innerText = `${state.videoRetryMultiplier.toFixed(1)}x`;
     document.getElementById('storyboard-final-cost').innerText = `$${storyboardCost.toFixed(2)}`;
+
+    // Sync query states to URL live
+    syncStateToUrl();
 }
 
 // ================= NOTIFICATIONS & UTILS =================

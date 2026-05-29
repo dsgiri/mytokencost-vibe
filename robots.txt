@@ -1,0 +1,12 @@
+# robots.txt - Crawler directives for vibe.mytokencost.com
+# Maximizes crawler efficiency and routes search engines to sitemaps
+
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /styles.css
+Allow: /app.js
+Allow: /README.md
+
+# Sitemaps Location
+Sitemap: https://vibe.mytokencost.com/sitemap.xml

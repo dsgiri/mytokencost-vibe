@@ -1,0 +1,14 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/calculator", "destination": "/index.html" },
+    { "source": "/compactor", "destination": "/index.html" },
+    { "source": "/localfirst", "destination": "/index.html" },
+    { "source": "/cheatsheet", "destination": "/index.html" },
+    { "source": "/auditor", "destination": "/index.html" },
+    { "source": "/vision", "destination": "/index.html" },
+    { "source": "/svgopt", "destination": "/index.html" },
+    { "source": "/multimodal", "destination": "/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
