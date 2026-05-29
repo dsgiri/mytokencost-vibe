@@ -34,4 +34,9 @@ python -m http.server 8000
 npx serve .
 ```
 
+---
+
+## 🚀 Deployment & Pipelines
+For detailed instructions on local testing protocols, asset optimization, version control, and production publishing steps, refer to the [Test, Build & Deploy Guide](TEST_BUILD_DEPLOY.md).
+
 *Crafted with high-aesthetic dark mode principles for modern developer workflows.*
